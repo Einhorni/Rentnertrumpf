@@ -280,8 +280,8 @@ let changeDecks (aktuelleDecks: Decks) (sieger:Spieler) (aktuelleKarten:Karte li
 
     let neuesSiegerDeck =
         aktuelleKarten
-        |> List.filter (fun x -> x.Spieler <> Keiner && x.Spieler <> sieger)    //alle Fakekarten rausnehmen (werden gebraucht, um unabhängig Anzahl Spieler die gleiche Länge der KArtenliste zu haben
-        |> List.append siegerDeck
+        |> List.filter (fun x -> x.Spieler <> Keiner && x.Spieler <> sieger)    //alle Fakekarten rausnehmen (werden gebraucht, um unabhängig Anzahl Spieler die gleiche Länge der KArtenliste zu haben) und auch die Karte des Siegers
+        |> List.append siegerDeck //übrige Karten dem Siegerdeck hinzufügen
         |> List.map (fun x -> {x with Spieler = sieger})
 
 
@@ -298,24 +298,30 @@ let changeDecks (aktuelleDecks: Decks) (sieger:Spieler) (aktuelleKarten:Karte li
     let verliererDecks = 
         verliererDecksAnfang @ verliererDecksEnde
 
-    let neueVerliererListe =
+    let verlierKarten = //offene Karten außer Spieler = keiner oder Siegerkarte
+        aktuelleKarten //alle offenen Karten
+        |> List.filter (fun x -> x.Spieler <> Keiner && x.Spieler <> sieger)
+
+    let neueVerliererDecks =
         verliererDecks
         |> List.map (fun verliererDeck ->
-            let verlierKarten =
-                aktuelleKarten
-                |> List.filter (fun x -> x.Spieler <> Keiner) 
             verliererDeck
-            |> List.filter (fun y ->
+            |> List.filter (fun karteImVerliererDeck ->
                 verlierKarten
                 |> List.exists (fun z ->
-                    y <> z)
-                )
+                    Browser.Dom.console.log(karteImVerliererDeck.Name + "<>" + z.Name + "=" + (karteImVerliererDeck.Name <> z.Name).ToString())
+                    karteImVerliererDeck.Name = z.Name)
+                |> not    
             )
+        )
+            
+            
+
 
     //neue Decks
 
     let neueDecksAnfang, neueDecksEnde =
-        neueVerliererListe //3 elemente
+        neueVerliererDecks //3 elemente
         |> List.splitAt (siegerDeckIndex)
     
     let neueDecks =
