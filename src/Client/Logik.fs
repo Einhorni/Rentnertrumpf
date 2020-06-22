@@ -213,12 +213,13 @@ let werIstDran anzahlSpieler aktuellerSpielerIndex =
 
 
 
-let vergleicheKarten (karten:KartenDerRunde) (vergleichswert:Vergleichswert) niedrigOderhochGewinnt =
-    let kartenOhneFake =
+let vergleicheKarten (karten:KartenDerRunde) (vergleichswert:Vergleichswert) (rundenGewinner:Spieler list) niedrigOderhochGewinnt =
+    let kartenDerGewinner =
         karten
-        |> List.filter (fun x -> x.Spieler <> Keiner)
+        |> List.filter (fun x ->
+        rundenGewinner |> List.contains x.Spieler)
     let werte =
-        kartenOhneFake
+        kartenDerGewinner
         |> List.map (fun x ->            
             match vergleichswert with
             | Krankheit _ ->

@@ -86,7 +86,7 @@ let rec finalerRundenGewinner model (rundenGewinner:Spieler list) (vergleichswer
         let neueGegnerVergleichswerte = vergleichswerteGegner1.Tail
 
         let neuerRundenGewinner =
-            vergleicheKarten neueKartenDerRunde neueVergleichsWerte.[0] (niedrigOderHochGewinnt neueVergleichsWerte.[0]) //ddd
+            vergleicheKarten neueKartenDerRunde neueVergleichsWerte.[0] rundenGewinner (niedrigOderHochGewinnt neueVergleichsWerte.[0]) //ddd
 
         finalerRundenGewinner model neuerRundenGewinner neueVergleichsWerte neueGegnerVergleichswerte
 
@@ -99,22 +99,6 @@ let rec finalerRundenGewinner model (rundenGewinner:Spieler list) (vergleichswer
 
 
 let wählenDerBestenKarte (vergleichsWerteGegner:Vergleichswert list) =
-//es mus unter den restlichen vergleichswerten des gegners geprüft werden, die anderen werte fallen raus
-
-    //let gegnerKarte = model.KartenDerRunde.[werIstDran]
-    //let (_, kpunkte) = gegnerKarte.Krankheit
-    //let (_, sopunkte) = gegnerKarte.Sonstiges
-    //let apunkte = alterFünferWert gegnerKarte.Alter
-    //let spunkte =
-    //    match gegnerKarte.Schamgefühl with
-    //    | 1 -> 5
-    //    | 2 -> 4
-    //    | 3 -> 3
-    //    | 4 -> 2
-    //    | 5 -> 1
-    //    | _ -> 0
-
-    //let listeWerte = [Krankheit kpunkte; Alter apunkte; Sonstiges sopunkte; Schamgefühl spunkte]
 
     let genormteVergleichswerte =
         vergleichsWerteGegner
@@ -142,6 +126,55 @@ let wählenDerBestenKarte (vergleichsWerteGegner:Vergleichswert list) =
 
     vergleichsWerteGegner.[indexVergleichswert]
 
+let indizeesZwischenGewinner model zwischenGewinner = 
+    model.Spieler
+    |> List.indexed
+    |> List.filter (fun (i,x) ->
+        zwischenGewinner
+        |> List.exists (fun y -> y=x)
+        )
+    |> List.map (fun (i,x) -> i)
+
+
+let wessenKarte werIstDranIndex indizes =
+    //weristdran ist zwischengewinner --> immer noch dran
+    if indizes |> List.contains werIstDranIndex then
+        werIstDranIndex
+    //wer ist dran ist kein gewinner --> nächster gegner ist dran
+    else
+        if [0;1;2] |> List.contains werIstDranIndex  then
+
+            //der nächsthöhere Wert wird genommen
+            indizes
+            |> List.filter (fun x -> x > werIstDranIndex)
+            |> List.min
+
+            //der niedrigste Wert wird genommen
+        else indizes
+            |> List.min
+
+
+let vergleichswerteGegner1 (kartenDerRunde: Karte list) wessenKarte =
+    let (kh, kpunkte) = kartenDerRunde.[wessenKarte].Krankheit
+    let (so, spunkte) = kartenDerRunde.[wessenKarte].Sonstiges
+    [Krankheit kpunkte; Alter kartenDerRunde.[wessenKarte].Alter; Sonstiges spunkte; Schamgefühl kartenDerRunde.[wessenKarte].Schamgefühl]
+
+//nur noch die WErte, die bisher noch nicht verglichen wurden vergleichen
+let vergleichslisteGegner1 model kartenDerRunde vergleichswerte zwischenGewinner werIstDranIndex =
+    indizeesZwischenGewinner model zwischenGewinner
+    |> wessenKarte  werIstDranIndex
+    |> vergleichswerteGegner1 kartenDerRunde
+    |> List.filter (fun x ->
+        vergleichswerte
+        |> List.exists (fun y ->
+            match x, y with
+            | Krankheit _ , Krankheit _ -> false
+            | Alter _ , Alter _ -> false
+            | Sonstiges _ , Sonstiges _ -> false
+            | Schamgefühl _ , Schamgefühl _ -> false
+            | _ -> true
+            )
+        )
 
 let spieler =[Spieler1; Gegner1; Gegner2; Gegner3]
 
@@ -167,14 +200,16 @@ let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
                 Weitersuchen = false
                 WerIstDranIndex = werIstDran anzahlSpieler model.WerIstDranIndex
                 Spieler = spielerListe
+                test = [[]]
             }    
-        newModel, Cmd.none
+        newModel,
+            if newModel.WerIstDranIndex = 0 then
+                Cmd.none
+            else Cmd.ofMsg GegnerErsterZug
 
 
         //wenn werIstDrann nicht 0, dann neue Msg: GegnerErsterZug
     | GegnerErsterZug ->
-
-        
 
         let gegnerKarte = model.KartenDerRunde.[model.WerIstDranIndex]
         let (_, kpunkte) = gegnerKarte.Krankheit
@@ -186,18 +221,13 @@ let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
 
         let vergleichsWert = wählenDerBestenKarte listeWerte
 
-        //let indexVergleichswert = 
-        //    listeWerte //[1;3;6;2]
-        //    |> List.indexed
-        //    |> List.sortByDescending (fun (i, x) -> x)
-        //    |> List.map (fun (i,x) -> i)
-        //    |> List.head
+        //let neuesModel = {
+        //    model with
+        //        Vergleichswerte = [vergleichsWert]
+        //    }
 
-        //let vergleichsWert = listeWerte.[indexVergleichswert]
 
-        //wenn unentschieden, dann darf derselbe Gegner nochmal wählen
-
-        model, Cmd.none
+        model, Cmd.ofMsg (Vergleich vergleichsWert)
     | NeuStart ->
         let newModel = {
             model with 
@@ -225,8 +255,12 @@ let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
                     |> List.exists (fun y -> y = x.Spieler))
             else model.KartenDerRunde
 
+        let aktuelleSpieler =
+            if model.RundenGewinner = [] then model.Spieler
+            else model.RundenGewinner
+
         let zwischenGewinner =
-            vergleicheKarten zuVergleichendeKarten vergleichswert (niedrigOderHochGewinnt vergleichswert)
+            vergleicheKarten zuVergleichendeKarten vergleichswert aktuelleSpieler (niedrigOderHochGewinnt vergleichswert)
 
         if zwischenGewinner.Length = 1 || model.WerIstDranIndex = 0 then 
             let newModel ={
@@ -237,66 +271,16 @@ let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
                         Vergleichswerte = vergleichswerte}
             newModel, Cmd.none
 
-
         //zeischenergebnis: mehrere gewinner
         else
-                let indizeesZwischenGewinner model zwischenGewinner = 
-                    model.Spieler
-                    |> List.indexed
-                    |> List.filter (fun (i,x) ->
-                        zwischenGewinner
-                        |> List.exists (fun y -> y=x)
-                        )
-                    |> List.map (fun (i,x) -> i)
-
-                
-
-
-                let wessenKarte werIstDranIndex indizes =
-                    Browser.Dom.console.log(indizes)
-                    //weristdran ist zwischengewinner --> immer noch dran
-                    if indizes |> List.contains werIstDranIndex then
-                        werIstDranIndex
-                    //wer ist dran ist kein gewinner --> nächster gegner ist dran
-                    else
-                        if [0;1;2] |> List.contains werIstDranIndex  then
-
-                            //der nächsthöhere Wert wird genommen
-                            indizes
-                            |> List.filter (fun x -> x > werIstDranIndex)
-                            |> List.min
-
-                            //der niedrigste Wert wird genommen
-                        else indizes
-                            |> List.min 
-
-                let vergleichswerteGegner1 model wessenKarte =
-                            let (kh, kpunkte) = model.KartenDerRunde.[wessenKarte].Krankheit
-                            let (so, spunkte) = model.KartenDerRunde.[wessenKarte].Sonstiges
-                            [Krankheit kpunkte; Alter model.KartenDerRunde.[wessenKarte].Alter; Sonstiges spunkte; Schamgefühl model.KartenDerRunde.[wessenKarte].Schamgefühl]
-
-                //nur noch die WErte, die bisher noch nicht verglichen wurden vergleichen
-                let vergleichslisteGegner1 model vergleichswerte zwischenGewinner werIstDranIndex =
-                    indizeesZwischenGewinner model zwischenGewinner
-                    |> wessenKarte  werIstDranIndex
-                    |> vergleichswerteGegner1 model 
-                    |> List.filter (fun x ->
-                        vergleichswerte
-                        |> List.exists (fun y ->
-                            match x, y with
-                            | Krankheit _ , Krankheit _ -> false
-                            | Alter _ , Alter _ -> false
-                            | Sonstiges _ , Sonstiges _ -> false
-                            | Schamgefühl _ , Schamgefühl _ -> false
-                            | _ -> true
-                            )
-                        )
-
                 let neueKartenDerRunde =
                     model.KartenDerRunde
-                    |> List.filter (fun x ->
-                        zwischenGewinner |> List.contains x.Spieler
+                    |> List.collect (fun x ->
+                        if zwischenGewinner |> List.contains x.Spieler then
+                            [x]
+                        else []
                         )
+
 
                 ////spieler ist unter den Gewinnern --> ins model schreiben, damit spieler nächsten zug wählen kann
                 //hier eventuell eine Verzögerung 1-2 Sekunden einbauen??
@@ -305,7 +289,7 @@ let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
                         model with
                             test = [indizeesZwischenGewinner model zwischenGewinner]
                             RundenGewinner = zwischenGewinner
-                            MöglicheGegnerVergleichswerte = vergleichslisteGegner1 model vergleichswerte zwischenGewinner model.WerIstDranIndex
+                            MöglicheGegnerVergleichswerte = vergleichslisteGegner1 model model.KartenDerRunde vergleichswerte zwischenGewinner model.WerIstDranIndex
                             Vergleichswerte = vergleichswerte
                             ZwischengewinnerKarten = neueKartenDerRunde
                             }
@@ -317,71 +301,22 @@ let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
                         model with
                             test = [indizeesZwischenGewinner model zwischenGewinner]
                             RundenGewinner = zwischenGewinner
-                            MöglicheGegnerVergleichswerte = vergleichslisteGegner1 model vergleichswerte zwischenGewinner model.WerIstDranIndex
+                            MöglicheGegnerVergleichswerte = vergleichslisteGegner1 model model.KartenDerRunde vergleichswerte zwischenGewinner model.WerIstDranIndex
                             Vergleichswerte = vergleichswerte
                             Weitersuchen = true
                             ZwischengewinnerKarten = neueKartenDerRunde
                             }
-                    
+
+
+
                     newModel, Cmd.ofMsg WeitersuchenButton
                     //finalerRundenGewinner model zwischenGewinner vergleichswerte (vergleichslisteGegner1 model vergleichswerte zwischenGewinner model.WerIstDranIndex) model.WerIstDranIndex
 
     | SucheFinalenRundenGewinner ->
 
-        let indizeesZwischenGewinner model zwischenGewinner = 
-            model.Spieler
-            |> List.indexed
-            |> List.filter (fun (i,x) ->
-                zwischenGewinner
-                |> List.exists (fun y -> y=x)
-                )
-            |> List.map (fun (i,x) -> i)
-
-        let wessenKarte werIstDranIndex indizes =
-            
-            //weristdran ist zwischengewinner --> immer noch dran
-            if indizes |> List.contains werIstDranIndex then
-                werIstDranIndex
-            //wer ist dran ist kein gewinner --> nächster gegner ist dran
-            else
-                if [0;1;2] |> List.contains werIstDranIndex  then
-
-                    //der nächsthöhere Wert wird genommen
-                    indizes
-                    |> List.filter (fun x -> x > werIstDranIndex)
-                    |> List.min
-
-                    //der niedrigste Wert wird genommen
-                else indizes
-                    |> List.min 
-
-      
-
-        let vergleichswerteGegner1 (kartenDerRunde: Karte list) wessenKarte =
-                    let (kh, kpunkte) = kartenDerRunde.[wessenKarte].Krankheit
-                    let (so, spunkte) = kartenDerRunde.[wessenKarte].Sonstiges
-                    [Krankheit kpunkte; Alter kartenDerRunde.[wessenKarte].Alter; Sonstiges spunkte; Schamgefühl kartenDerRunde.[wessenKarte].Schamgefühl]
-
-        //nur noch die WErte, die bisher noch nicht verglichen wurden vergleichen
-        let vergleichslisteGegner1 model neueKartenDerRunde vergleichswerte zwischenGewinner werIstDranIndex =
-            indizeesZwischenGewinner model zwischenGewinner
-            |> wessenKarte  werIstDranIndex
-            |> vergleichswerteGegner1 neueKartenDerRunde 
-            |> List.filter (fun x ->
-                vergleichswerte
-                |> List.exists (fun y ->
-                    match x, y with
-                    | Krankheit _ , Krankheit _ -> false
-                    | Alter _ , Alter _ -> false
-                    | Sonstiges _ , Sonstiges _ -> false
-                    | Schamgefühl _ , Schamgefühl _ -> false
-                    | _ -> true
-                    )
-                )
-
         if model.RundenGewinner.Length > 1 then
 
-            let neuerWerIstDran = wessenKarte model.WerIstDranIndex (indizeesZwischenGewinner model model.RundenGewinner)             
+            
 
             debugCounter <- debugCounter+1
             if debugCounter > 10 then failwith "loop"
@@ -389,33 +324,63 @@ let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
             let neueVergleichsWerte1 = [wählenDerBestenKarte model.MöglicheGegnerVergleichswerte] @ model.Vergleichswerte
 
 
-            let neueKartenDerRunde =
+            let neueZwischengewinnerkarten =
                 model.ZwischengewinnerKarten
                 |> List.filter (fun x ->
                     model.RundenGewinner |> List.contains x.Spieler
                     )
-            
+            //zwischenGewinnerKarten sind falsch, hier sind 1-4 karten, es müssen aber immer 4 karten sein
             let neuerRundenGewinner =
-                vergleicheKarten neueKartenDerRunde neueVergleichsWerte1.[0] (niedrigOderHochGewinnt neueVergleichsWerte1.[0]) //ddd
+                vergleicheKarten model.KartenDerRunde neueVergleichsWerte1.[0] model.RundenGewinner (niedrigOderHochGewinnt neueVergleichsWerte1.[0]) //ddd
 
+            Browser.Dom.console.log("indizes")
+            Browser.Dom.console.log((indizeesZwischenGewinner model neuerRundenGewinner) |> List.toArray )
+            Browser.Dom.console.log("wer ist dran")
+            Browser.Dom.console.log(model.WerIstDranIndex)
 
-            
-                
-            let neueVergleichsWerteGegner = vergleichslisteGegner1 model neueKartenDerRunde neueVergleichsWerte1 neuerRundenGewinner neuerWerIstDran
+            //ab hier kann es sein, dass es bereits einen Gewinner gibt, neue werte sind also obsolet
 
-            let neuesModel = {
-                model with
-                    RundenGewinner = neuerRundenGewinner
-                    ZwischengewinnerKarten = neueKartenDerRunde
-                    Vergleichswerte = neueVergleichsWerte1
-                    WerIstDranIndex = neuerWerIstDran
-                    MöglicheGegnerVergleichswerte = neueVergleichsWerteGegner
-                    Weitersuchen = false
-                }
-            neuesModel,
-                if neuerRundenGewinner.Length > 1 then
-                    Cmd.ofMsg WeitersuchenButton
-                else Cmd.none
+            if neuerRundenGewinner.Length = 1 then
+                debugCounter <- 0
+                let neuesModel = {
+                    model with
+                        RundenGewinner = neuerRundenGewinner
+                        ZwischengewinnerKarten = neueZwischengewinnerkarten
+                        Vergleichswerte = neueVergleichsWerte1
+                        Weitersuchen = false
+                    }
+                neuesModel, Cmd.none
+
+            else
+                let neuerWerIstDran = wessenKarte model.WerIstDranIndex (indizeesZwischenGewinner model neuerRundenGewinner)             
+                let neueVergleichsWerteGegner = vergleichslisteGegner1 model model.KartenDerRunde neueVergleichsWerte1 neuerRundenGewinner model.WerIstDranIndex
+
+                let neuesModel = {
+                    model with
+                        RundenGewinner = neuerRundenGewinner
+                        ZwischengewinnerKarten = neueZwischengewinnerkarten
+                        Vergleichswerte = neueVergleichsWerte1
+                        WerIstDranIndex = neuerWerIstDran
+                        MöglicheGegnerVergleichswerte = neueVergleichsWerteGegner
+                        Weitersuchen = false
+                    }
+                neuesModel, Cmd.ofMsg WeitersuchenButton
+
+            //let vergleichslisteGegner1 model kartenDerRunde vergleichswerte zwischenGewinner werIstDranIndex =
+            //    indizeesZwischenGewinner model zwischenGewinner
+            //    |> wessenKarte  werIstDranIndex
+            //    |> vergleichswerteGegner1 kartenDerRunde
+            //    |> List.filter (fun x ->
+            //        vergleichswerte
+            //        |> List.exists (fun y ->
+            //            match x, y with
+            //            | Krankheit _ , Krankheit _ -> false
+            //            | Alter _ , Alter _ -> false
+            //            | Sonstiges _ , Sonstiges _ -> false
+            //            | Schamgefühl _ , Schamgefühl _ -> false
+            //            | _ -> true
+            //            )
+            //        )
 
 
         else
