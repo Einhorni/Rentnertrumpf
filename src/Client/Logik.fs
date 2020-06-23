@@ -310,7 +310,7 @@ let changeDecks (aktuelleDecks: Decks) (sieger:Spieler) (aktuelleKarten:Karte li
             |> List.filter (fun karteImVerliererDeck ->
                 verlierKarten
                 |> List.exists (fun z ->
-                    Browser.Dom.console.log(karteImVerliererDeck.Name + "<>" + z.Name + "=" + (karteImVerliererDeck.Name <> z.Name).ToString())
+                    //Browser.Dom.console.log(karteImVerliererDeck.Name + "<>" + z.Name + "=" + (karteImVerliererDeck.Name <> z.Name).ToString())
                     karteImVerliererDeck.Name = z.Name)
                 |> not    
             )
