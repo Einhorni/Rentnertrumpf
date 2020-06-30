@@ -166,51 +166,66 @@ let kartenDecks (initialSet:Karte list) anzahlSpieler : Decks =
     createDecks set initialDeck1 initialDeck2 initialDeck3
 
 
+let kartenDerRunde (decks:Decks) anzahlAllerSpieler (indizesAktiverSpieler: int list) : KartenDerRunde =
+    //keine zufällige Karte, sondern die nächste im Stapel wählen (List.last)
+    //nur aktive Spieler haben hier eine Karte, ausgeschiedene nicht
+    let indizesAllerSpieler =
+                match anzahlAllerSpieler with
+                | 2 -> [for i in 0..1 do i]
+                | 3 -> [for i in 0..2 do i]
+                | 4 -> [for i in 0..3 do i]
+                | _ -> []
 
-let kartenDerRunde (decks:Decks) anzahlSpieler : KartenDerRunde =
+    //let indizesAllerSpieler = [0..3]
+    //let indizesAktiverSpieler = [3]
 
-    let spielerDeck = decks.[0]
-    let gegner1Deck = decks.[1]
-    let gegner2Deck = decks.[2]
-    let gegner3Deck = decks.[3]
-
-    match anzahlSpieler with
-    | 2 ->
-        //prüfen, ob ein deck leer --> verlierer
-        //fakekarten für letzte beide anlegen
-
-        let eigeneKarte = spielerDeck.[r.Next(0,spielerDeck.Length)]
-        let gegner1Karte = gegner1Deck.[r.Next(0,gegner1Deck.Length)]
-        [eigeneKarte; gegner1Karte; fakeKarte; fakeKarte] //letzte beide nur damit typ passt
-    | 3 ->
-        let eigeneKarte = spielerDeck.[r.Next(0,spielerDeck.Length)]
-        let gegner1Karte = gegner1Deck.[r.Next(0,gegner1Deck.Length)]
-        let gegner2Karte = gegner2Deck.[r.Next(0,gegner2Deck.Length)]
-        [eigeneKarte; gegner1Karte; gegner2Karte; fakeKarte] //letzter nur damit typ passt
-    | 4 ->
-        let eigeneKarte = spielerDeck.[r.Next(0,spielerDeck.Length)]
-        let gegner1Karte = gegner1Deck.[r.Next(0,gegner1Deck.Length)]
-        let gegner2Karte = gegner2Deck.[r.Next(0,gegner2Deck.Length)]
-        let gegner3Karte = gegner3Deck.[r.Next(0,gegner3Deck.Length)]
-        [eigeneKarte; gegner1Karte; gegner2Karte; gegner3Karte]
-    | _ -> //tritt nicht ein
-        [fakeKarte; fakeKarte; fakeKarte; fakeKarte]
+    indizesAllerSpieler //[0;1;2] 
+    |> List.map (fun x ->
+        indizesAktiverSpieler //[1;2]
+        |> List.map (fun y ->
+            y=x
+        ))
+    |> List.indexed
+    |> List.map (fun (i,x) ->
+        if x |> List.contains true then (i,true)
+        else (i,false)
+        )
+    //aktive spieler bekommen karten, andere nicht
+    |> List.map (fun (i,x) ->
+        if x = true then decks.[i] |> List.head
+        else fakeKarte
+        )
 
 
-let werIstDran anzahlSpieler aktuellerSpielerIndex =
-    
+//hier muss berücksichtigt werden, dass wer ist dran manchmal verändert wird, weil es zwischengewinner
+let werIstDran anzahlSpieler aktuellerSpielerIndex (indizesAktiverSpieler:int list) =
+
     if aktuellerSpielerIndex = 4 then
         r.Next(0,anzahlSpieler)
         
     else
+        //let indizesAktiverSpieler = [0;1;2]
+        //let aktuellerSpielerIndex = 0
+        //let anzahlSpieler = 4
+
         if aktuellerSpielerIndex = anzahlSpieler-1 then
-            0
-        else aktuellerSpielerIndex + 1
+            indizesAktiverSpieler.[0]
+        else
+            
+            if indizesAktiverSpieler |> List.contains (aktuellerSpielerIndex+1) then
+                aktuellerSpielerIndex+1
+            else
+                if aktuellerSpielerIndex = (indizesAktiverSpieler |> List.last) then
+                    indizesAktiverSpieler.Head
+                else
+                    //nächstgrößerer verfügbarer index von aktive spieler
+                    indizesAktiverSpieler
+                    |> List.filter (fun x -> x > aktuellerSpielerIndex)
+                    |> List.min
 
-    
-    
-    
 
+
+      
 
 
 let vergleicheKarten (karten:KartenDerRunde) (vergleichswert:Vergleichswert) (rundenGewinner:Spieler list) niedrigOderhochGewinnt =
@@ -254,39 +269,35 @@ let vergleicheKarten (karten:KartenDerRunde) (vergleichswert:Vergleichswert) (ru
         |> List.map (fun (x,y) -> y) 
 
 
-
-
-let changeDecks (aktuelleDecks: Decks) (sieger:Spieler) (aktuelleKarten:Karte list)=
+let changeDecks (aktuelleDecks: Decks) (sieger:Spieler) (aktuelleKarten:Karte list) =
 
     //siegerDeck
 
     let siegerDeckIndex =
-        aktuelleDecks
-        |> List.findIndex (fun x ->
-            let listeMitSieger = 
-                x
-                |> List.filter(fun y -> y.Spieler = sieger)
-            x = listeMitSieger //alle anderen decks sind leere listen, also false
-            )
+        [Spieler1; Gegner1; Gegner2; Gegner3]
+        |> List.findIndex (fun x -> x = sieger)
 
     let siegerDeck =
-        aktuelleDecks
+        aktuelleDecks.[siegerDeckIndex]
+        
         |> List.filter (fun x ->
-            let listeMitSieger = 
-                x
-                |> List.filter(fun y -> y.Spieler = sieger)
-            x = listeMitSieger //alle anderen decks sind leere listen, also false
+            let gewinnerKarte =
+                aktuelleKarten
+                |> List.filter (fun y -> y.Spieler = sieger)
+                |> List.exactlyOne
+            x <> gewinnerKarte
             )
-        |> List.collect id
+
 
     let neuesSiegerDeck =
         aktuelleKarten
-        |> List.filter (fun x -> x.Spieler <> Keiner && x.Spieler <> sieger)    //alle Fakekarten rausnehmen (werden gebraucht, um unabhängig Anzahl Spieler die gleiche Länge der KArtenliste zu haben) und auch die Karte des Siegers
+        |> List.filter (fun x -> x.Spieler <> Keiner)// && x.Spieler <> sieger)    //alle Fakekarten rausnehmen (werden gebraucht, um unabhängig Anzahl Spieler die gleiche Länge der KArtenliste zu haben) und auch die Karte des Siegers
         |> List.append siegerDeck //übrige Karten dem Siegerdeck hinzufügen
         |> List.map (fun x -> {x with Spieler = sieger})
 
-
     //verliererDecks
+
+    //!!! wenn spieler draußen, darf er keine Karten mehr bekommen - er bekommt nur eine Fakekarte
 
     let (verliererDecksAnfang, rest) =
         aktuelleDecks
@@ -306,14 +317,18 @@ let changeDecks (aktuelleDecks: Decks) (sieger:Spieler) (aktuelleKarten:Karte li
     let neueVerliererDecks =
         verliererDecks
         |> List.map (fun verliererDeck ->
-            verliererDeck
-            |> List.filter (fun karteImVerliererDeck ->
-                verlierKarten
-                |> List.exists (fun z ->
-                    //Browser.Dom.console.log(karteImVerliererDeck.Name + "<>" + z.Name + "=" + (karteImVerliererDeck.Name <> z.Name).ToString())
-                    karteImVerliererDeck.Name = z.Name)
-                |> not    
-            )
+            //Browser.Dom.console.log(verliererDeck.ToString())
+            if verliererDeck = [] then []
+            else
+
+                verliererDeck
+                |> List.filter (fun karteImVerliererDeck ->
+                    verlierKarten
+                    |> List.exists (fun z ->
+                        
+                        karteImVerliererDeck.Name = z.Name)
+                    |> not    
+                )
         )
             
             
