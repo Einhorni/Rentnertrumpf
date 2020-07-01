@@ -48,6 +48,13 @@ let fakeKarte = {
     Spieler = Keiner} 
 
 
+
+
+//########################################################################################
+//############################### Erstellung der Karten ##################################
+//########################################################################################
+
+
 //sollen die auch nach Geschlecht gehen?? Wegen gewissen Eigenschaften?
 let namen = ["Helga"; "Hilde"; "Herbert"; "Manfred"; "Harald"; "Doris"; "Heidrun"; "Adelheid"; "Werner"; "Joseph"; "Hans"; "Jacob"; "Franz"; "Barbara"; "Ursula"; "Agatha"; "Gertrud"; "Friedrich"; "Rosalinde"; "Walburga"; "Anton"; "Karl"; "Oskar"; "Gerda"; "Erna"; "Erwin"; "Wilhelm"; "Ludwig"; "Arnold"; "Alwin"; "Karla"; "Frieda"]
 
@@ -119,6 +126,16 @@ let kartenSet =
         }]
 
 
+
+
+
+//########################################################################################
+//############################### Spielfunktionen ########################################
+//########################################################################################
+
+
+
+
 let kartenDecks (initialSet:Karte list) anzahlSpieler : Decks = 
     let initialDeck1 = []
     let initialDeck2 = []
@@ -167,8 +184,7 @@ let kartenDecks (initialSet:Karte list) anzahlSpieler : Decks =
 
 
 let kartenDerRunde (decks:Decks) anzahlAllerSpieler (indizesAktiverSpieler: int list) : KartenDerRunde =
-    //keine zufällige Karte, sondern die nächste im Stapel wählen (List.last)
-    //nur aktive Spieler haben hier eine Karte, ausgeschiedene nicht
+
     let indizesAllerSpieler =
                 match anzahlAllerSpieler with
                 | 2 -> [for i in 0..1 do i]
@@ -176,12 +192,9 @@ let kartenDerRunde (decks:Decks) anzahlAllerSpieler (indizesAktiverSpieler: int 
                 | 4 -> [for i in 0..3 do i]
                 | _ -> []
 
-    //let indizesAllerSpieler = [0..3]
-    //let indizesAktiverSpieler = [3]
-
-    indizesAllerSpieler //[0;1;2] 
+    indizesAllerSpieler 
     |> List.map (fun x ->
-        indizesAktiverSpieler //[1;2]
+        indizesAktiverSpieler 
         |> List.map (fun y ->
             y=x
         ))
@@ -197,21 +210,14 @@ let kartenDerRunde (decks:Decks) anzahlAllerSpieler (indizesAktiverSpieler: int 
         )
 
 
-//hier muss berücksichtigt werden, dass wer ist dran manchmal verändert wird, weil es zwischengewinner
 let werIstDran anzahlSpieler aktuellerSpielerIndex (indizesAktiverSpieler:int list) =
 
     if aktuellerSpielerIndex = 4 then
         r.Next(0,anzahlSpieler)
-        
     else
-        //let indizesAktiverSpieler = [0;1;2]
-        //let aktuellerSpielerIndex = 0
-        //let anzahlSpieler = 4
-
         if aktuellerSpielerIndex = anzahlSpieler-1 then
             indizesAktiverSpieler.[0]
         else
-            
             if indizesAktiverSpieler |> List.contains (aktuellerSpielerIndex+1) then
                 aktuellerSpielerIndex+1
             else
@@ -222,10 +228,6 @@ let werIstDran anzahlSpieler aktuellerSpielerIndex (indizesAktiverSpieler:int li
                     indizesAktiverSpieler
                     |> List.filter (fun x -> x > aktuellerSpielerIndex)
                     |> List.min
-
-
-
-      
 
 
 let vergleicheKarten (karten:KartenDerRunde) (vergleichswert:Vergleichswert) (rundenGewinner:Spieler list) niedrigOderhochGewinnt =
@@ -291,13 +293,11 @@ let changeDecks (aktuelleDecks: Decks) (sieger:Spieler) (aktuelleKarten:Karte li
 
     let neuesSiegerDeck =
         aktuelleKarten
-        |> List.filter (fun x -> x.Spieler <> Keiner)// && x.Spieler <> sieger)    //alle Fakekarten rausnehmen (werden gebraucht, um unabhängig Anzahl Spieler die gleiche Länge der KArtenliste zu haben) und auch die Karte des Siegers
-        |> List.append siegerDeck //übrige Karten dem Siegerdeck hinzufügen
+        |> List.filter (fun x -> x.Spieler <> Keiner)    //alle Fakekarten rausnehmen (werden gebraucht, um unabhängig Anzahl Spieler die gleiche Länge der KArtenliste zu haben) und auch die Karte des Siegers
+        |> List.append siegerDeck //alle Karten der Runde dem Siegerdeck hinzufügen
         |> List.map (fun x -> {x with Spieler = sieger})
 
     //verliererDecks
-
-    //!!! wenn spieler draußen, darf er keine Karten mehr bekommen - er bekommt nur eine Fakekarte
 
     let (verliererDecksAnfang, rest) =
         aktuelleDecks
@@ -330,8 +330,6 @@ let changeDecks (aktuelleDecks: Decks) (sieger:Spieler) (aktuelleKarten:Karte li
                     |> not    
                 )
         )
-            
-            
 
 
     //neue Decks
@@ -340,21 +338,112 @@ let changeDecks (aktuelleDecks: Decks) (sieger:Spieler) (aktuelleKarten:Karte li
         neueVerliererDecks //3 elemente
         |> List.splitAt (siegerDeckIndex)
     
-    let neueDecks =
-        neueDecksAnfang @ [neuesSiegerDeck] @ neueDecksEnde
-    
-    //[1;2;3;4] |> List.findIndex (fun x -> x = 1) --> 0
-    //[1;2;3;4] |> List.findIndex (fun x -> x = 2) --> 1
-    //[1;2;3;4] |> List.findIndex (fun x -> x = 4) --> 3
-    //[1;2;3;4] |> List.splitAt 0 --> [], [1; 2; 3; 4]
-    //[1;2;3;4] |> List.splitAt 1 --> [1], [2; 3; 4]
-    //[1;2;3;4] |> List.splitAt 2 --> [1; 2], [3; 4]
-    //[1;2;3;4] |> List.splitAt 3 --> [1; 2; 3], [4]
-
-    neueDecks
+    neueDecksAnfang @ [neuesSiegerDeck] @ neueDecksEnde
 
 
 
-        
+
+
+//########################################################################################
+//############################### Hilfsfunktionen ########################################
+//########################################################################################
+
+
+
+
+let niedrigOderHochGewinnt vergleichswert =
+    match vergleichswert with
+    | Krankheit _ -> Hoch
+    | Alter _ -> Hoch
+    | Sonstiges _ -> Hoch
+    | Schamgefühl _ -> Niedrig
+
+
+let wählenDerBestenKarte (vergleichsWerteGegner:Vergleichswert list) =
+
+    let genormteVergleichswerte =
+        vergleichsWerteGegner
+        |> List.map (fun x ->
+            match x with
+            | Krankheit kpunkte -> kpunkte
+            | Alter apunkte -> alterFünferWert apunkte
+            | Sonstiges spunkte -> spunkte
+            | Schamgefühl schpunkte ->
+                match schpunkte with
+                | 1 -> 5
+                | 2 -> 4
+                | 3 -> 3
+                | 4 -> 2
+                | 5 -> 1
+                | _ -> 0
+            )
+
+    let indexVergleichswert = 
+        genormteVergleichswerte // listeWerte //[1;3;6;2]
+        |> List.indexed
+        |> List.sortByDescending (fun (i, x) -> x)
+        |> List.map (fun (i,x) -> i)
+        |> List.head
+
+    vergleichsWerteGegner.[indexVergleichswert]
+
+
+let wessenKarte werIstDranIndex indizes =
+    //weristdran ist zwischengewinner --> immer noch dran
+
+    //let werIstDranIndex = 2
+    //let indizes = [1;3]
+
+    if indizes |> List.contains werIstDranIndex then
+        werIstDranIndex
+    //wer ist dran ist kein gewinner --> nächster gegner ist dran
+    else
+        if [0;1;2] |> List.contains werIstDranIndex  then
+
+            
+            if (indizes |> List.last) < werIstDranIndex then 
+                indizes |> List.min
+            else
+            //der nächsthöhere Wert wird genommen
+                indizes
+                |> List.filter (fun x -> x > werIstDranIndex)
+                |> List.min
+
+            //der niedrigste Wert wird genommen
+        else indizes
+            |> List.min
+
+
+//nur noch die WErte, die bisher noch nicht verglichen wurden vergleichen
+let vergleichslisteGegner möglicheVergleichswerteGegner bereitsGespielteVergleichswerte =
+    möglicheVergleichswerteGegner
+    |> List.filter (fun x ->
+        bereitsGespielteVergleichswerte
+        |> List.exists (fun y ->
+            match x, y with
+            | Krankheit _ , Krankheit _ ->
+                true
+            | Alter _ , Alter _ ->
+                true
+            | Sonstiges _ , Sonstiges _ ->
+                true
+            | Schamgefühl _ , Schamgefühl _ ->
+                true
+            | _ -> false
+            )
+        |> not)
+
+
+
+let indizesAktiverSpieler spielerListe aktiveSpieler =
+    spielerListe
+    |> List.indexed
+    |> List.filter (fun (i,spieler) ->
+        aktiveSpieler
+        |> List.exists (fun aktiveSpieler ->
+            //Fable /JS hat ein Problem mit Vergleich von Disc Unions, sporadisch: false bei gleichen DIngernCases, deswegen ein To String Vergleich
+            aktiveSpieler.ToString() = spieler.ToString())
+        )
+    |> List.map (fun (i,x) -> i)
 
  
