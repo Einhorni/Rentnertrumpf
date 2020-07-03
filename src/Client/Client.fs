@@ -4,11 +4,7 @@ open Elmish
 open Elmish.React
 open Fable.React
 open Fable.React.Props
-open Fetch.Types
-open Thoth.Fetch
 open Fulma
-open Thoth.Json
-open Shared
 open Logik
 
 
@@ -30,7 +26,7 @@ type Model = {
     Vergleichswerte: Vergleichswert list
     MöglicheGegnerVergleichswerte: Vergleichswert list
 
-    WerIstDranIndex: int
+    WerIstDranIndex: int //sollte ich eigentlich auch als Option machen, anstatt Ausweichwert 4, wenn keiner dran ist
     ZwischenWerIstDran: int option
 
     Weitersuchen: bool  //wird am Ende gelöscht
@@ -219,10 +215,9 @@ let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
                 model.WerIstDranIndex
             else wessenKarte model.WerIstDranIndex (indizeesZwischenGewinner model zwischenGewinner)
 
-        if
-            //wenn es einen Gewinner gibt oder Spieler am Zug, MOdell zurückgeben
+        if  //wenn es einen Gewinner gibt oder Spieler am Zug, MOdell zurückgeben
             zwischenGewinner.Length = 1 ||
-            (((indizeesZwischenGewinner model zwischenGewinner) |> wessenKarte  model.WerIstDranIndex = 0) && ((indizeesZwischenGewinner model zwischenGewinner) |> wessenKarte  zwischenWerIstDran = 0 ))
+            zwischenWerIstDran = 0
         then
             let neuesModel ={
                 model with
@@ -235,23 +230,8 @@ let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
 
             gibtEsEinenVerlierer model neuesModel zwischenGewinner vergleichswerte
 
-        //zwischenergebnis: mehrere gewinner
-        else
-                //wenn Spieler dran, dann Modell zurückgeben
-                if (indizeesZwischenGewinner model zwischenGewinner) |> wessenKarte  model.WerIstDranIndex = 0 || zwischenWerIstDran = 0 then
-                    let newModel ={
-                        model with
-                            RundenGewinner = zwischenGewinner
-                            MöglicheGegnerVergleichswerte =  vergleichslisteGegner (möglicheVergleichsWerteGegner model zwischenGewinner) vergleichswerte
-                            Vergleichswerte = vergleichswerte
-                            ZwischenWerIstDran = Some zwischenWerIstDran
-                            Weitersuchen = false
-                            }
-                    newModel, Cmd.none
-
-                //als nächstes Computergegner
+        else //zwischenergebnis: mehrere gewinner, als nächstes Computergegner
                 //hier eventuell eine Verzögerung 1-2 Sekunden einbauen anstsatt WeitersuchenButton
-                else
                     let newModel ={
                         model with
                             RundenGewinner = zwischenGewinner
@@ -263,16 +243,12 @@ let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
 
                     newModel, Cmd.ofMsg WeitersuchenButton
 
-    | SucheFinalenRundenGewinner ->
+    | SucheFinalenRundenGewinner -> //unter Computergegnern
 
-        if model.RundenGewinner.Length > 1 then
             let neueVergleichsWerte1 = [wählenDerBestenKarte model.MöglicheGegnerVergleichswerte] @ model.Vergleichswerte
 
             let neueRundenGewinner =
                 vergleicheKarten model.KartenDerRunde neueVergleichsWerte1.[0] model.RundenGewinner (niedrigOderHochGewinnt neueVergleichsWerte1.[0]) //ddd
-
-
-            //ab hier kann es sein, dass es bereits einen Gewinner gibt, neue werte sind also obsolet
 
             if neueRundenGewinner.Length = 1 then
             
@@ -300,12 +276,6 @@ let update (msg : Msg) (model : Model) : Model * Cmd<Msg> =
                         Weitersuchen = false
                     }
                 neuesModel, Cmd.ofMsg WeitersuchenButton
-        else
-            let neuesModel = {
-                model with
-                    Weitersuchen = false
-                    }
-            neuesModel, Cmd.none
         
     | WeitersuchenButton ->
         let newModel = {
@@ -366,7 +336,21 @@ let view (model : Model) (dispatch : Msg -> unit) =
                         Column.column []
                             [
                                 p []
-                                    [//unbedingt nochmal Texte prüfen, ob so auch korrekt und ob, welche eingefügt werden müssen
+                                    [//Anzeige, wer dran ist
+                                        if model.ZwischenWerIstDran = Some 0 || model.WerIstDranIndex  = 0 then
+                                            str "Du bist an der Reihe"
+                                        elif model.ZwischenWerIstDran = Some 1 || model.WerIstDranIndex  = 1 then
+                                            str "Gegner 1 ist an der Reihe"
+                                        elif model.ZwischenWerIstDran = Some 2 || model.WerIstDranIndex  = 2 then
+                                            str "Gegner 2 ist an der Reihe"
+                                        elif model.ZwischenWerIstDran = Some 3 || model.WerIstDranIndex  = 3 then
+                                            str "Gegner 3 ist an der Reihe"
+                                        else
+                                            str ""
+                                    ]
+                                p []
+                                    [//Infotexte
+                                        //unbedingt nochmal Texte prüfen, ob so auch korrekt und ob, welche eingefügt werden müssen
                                         if model.Vergleichswerte =[] && model.KartenDerRunde = [] then
                                             str "Wähle Anzahl der Spieler"
                                         elif model.Vergleichswerte = [] then
