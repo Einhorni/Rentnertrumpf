@@ -294,7 +294,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
                 [ Heading.h2 [ ]
                     [ str "SAFE Template" ] ] ]
 
-          Container.container []
+          Container.container [ ]
               [ Content.content [ Content.Modifiers [ Modifier.TextAlignment (Screen.All, TextAlignment.Centered) ] ]
                     [
                         Heading.h3 [] [ str ("Choose number of players: " ) ]
@@ -398,18 +398,146 @@ let view (model : Model) (dispatch : Msg -> unit) =
                                         [str "Weitersuchen"] 
                                 ]
                         ]
-                   
+
+
+
+                //###########################################################################################
+                //################################ Spielerkarte #############################################
+                //###########################################################################################
+
+                if model.KartenDerRunde <> [] then
+                    div [ Style [CSSProp.Width "100%" ]  ]
+                        [
+                            
+                            Columns.columns []
+                                [
+                                    Column.column []
+                                        [
+                                        Box.box'
+                                                [
+                                                    Common.Props [Style
+                                                        [
+
+                                                            Width "500px"
+                                                            Margin "Auto"
+                                                            if model.RundenGewinner |> List.contains Spieler1 then
+                                                                BackgroundColor "#2Fb660" //grün = spieler unter gewinnern
+                                                            elif model.AktiveSpieler |> List.contains Spieler1 |> not then
+                                                                BackgroundColor "#BDBDBD" //grau = spieler draußen
+                                                            else BackgroundColor "#FFb660" //orange = spieler im Spiel
+                                                        ]]
+                                                ]
+                                                [
+                                                    //img [Src "images\Unbenannt.jpg"]
+                                                    if model.AktiveSpieler |> List.contains Spieler1 |> not then
+                                                        Columns.columns []
+                                                            [
+                                                                p [  Style [ CSSProp.FontSize "25px"] ][str (sprintf "Ausgeschieden")]
+                                                            ]
+                                                    elif model.AktiveSpieler.Length = 1 && model.AktiveSpieler.Head = Spieler1 then
+                                                        Columns.columns []
+                                                            [
+                                                                p [  Style [ CSSProp.FontSize "25px"] ][str (sprintf "Gewinner")]
+                                                            ]
+
+                                                    else
+                                                            
+
+                                                        Columns.columns []
+                                                            [
+                                                                Column.column []
+                                                                    [
+                                                                        p [  Style [ CSSProp.FontSize "25px"] ][str (sprintf "%s" model.KartenDerRunde.[0].Name)]
+                                                                    ]
+                                                            ]
+
+
+                                                        //Werte der Karten
+
+                                                        for j in 0..3 do
+                                                            Columns.columns []
+                                                                [
+                                                                    Column.column []
+                                                                        [
+                                                                            let schamPunkte = model.KartenDerRunde.[0].Schamgefühl
+                                                                            let (sonstiges, sonstigesPunkte) = model.KartenDerRunde.[0].Sonstiges
+                                                                            let alterPunkte = model.KartenDerRunde.[0].Alter
+                                                                            let (krankheit, krankheitPunkte) = model.KartenDerRunde.[0].Krankheit
+                                                                            let eigenschaften = [krankheitPunkte; alterPunkte; sonstigesPunkte; schamPunkte]
+                                                                            let vergleichsWerte = [Krankheit; Alter; Sonstiges; Schamgefühl]
+                                                                            Button.button
+                                                                                [
+                                                                                    Button.OnClick (fun _ -> dispatch (Vergleich (vergleichsWerte.[j] eigenschaften.[j])))
+                                                                                    
+                                                                                    if model.Vergleichswerte.Length >=1 then
+                                                                                        if model.Vergleichswerte.[0] = (vergleichsWerte.[j] eigenschaften.[j]) && model.RundenGewinner |> List.contains model.KartenDerRunde.[0].Spieler then 
+                                                                                            Button.Props [Style [BackgroundColor "#00ff00"]] //hellgrün = wert hat gewonnen
+                                                                                        elif model.Vergleichswerte(**.Tail**) |> List.contains (vergleichsWerte.[j] eigenschaften.[j]) then // schon verglichene Werte
+                                                                                            Button.Props [Style [ BackgroundColor "#EDB372"]] //orange / beige = schon verglichener Wert
+
+
+                                                                                    let schonVerglichen =
+                                                                                            
+
+                                                                                        model.Vergleichswerte
+                                                                                        |> List.exists (fun x ->
+                                                                                            match x, (vergleichsWerte.[j] eigenschaften.[j]) with
+                                                                                            | Krankheit _ , Krankheit _ -> true
+                                                                                            | Alter _ , Alter _ -> true
+                                                                                            | Sonstiges _ , Sonstiges _ -> true
+                                                                                            | Schamgefühl _ , Schamgefühl _ -> true
+                                                                                            | _ -> false
+                                                                                            )
+
+                                                                                    Button.Disabled
+                                                                                        (
+                                                                                        model.RundenGewinner.Length = 1 ||
+                                                                                        model.KartenDerRunde.[0].Spieler <> Spieler1 ||
+                                                                                        schonVerglichen ||
+                                                                                        (model.WerIstDranIndex <> 0 && model.ZwischenWerIstDran <> Some 0)
+                                                                                        )
+                                                                                ]
+                                                                                [
+                                                                                    let punkte = String.init eigenschaften.[j] (fun x -> "+") 
+                                                                                    str
+                                                                                        (match j with
+                                                                                        | 0 -> (sprintf "Krankheit: %s %s" krankheit punkte)
+                                                                                        | 1 -> (sprintf "Alter: %i" model.KartenDerRunde.[0].Alter)
+                                                                                        | 2 -> (sprintf "Sonstiges: %s %s" sonstiges punkte)
+                                                                                        | 3 -> (sprintf "Schamgefühl: %i" model.KartenDerRunde.[0].Schamgefühl)
+                                                                                        | _ -> "")
+                                                                                            
+                                                                                ]
+
+                                                                        ]
+                                                                ]
+
+                                                                                                        
+                                                ]
+
+                                    ]
+                                ]
+                        ]
+               
+
+               
+
+                //###########################################################################################
+                //################################ Gegnerkarten #############################################
+                //###########################################################################################
+
+
                 Columns.columns []
                     [
-                        for i in 1..model.AnzahlSpieler do
+                        for i in 2..model.AnzahlSpieler do
                         Column.column []
                             
                             [
                                 Tile.ancestor []
                                     [ Tile.parent []
-                                        [ Tile.child []
+                                        [ Tile.child [ ]
                                             [
-                                              Box.box' []
+                                              Box.box' [ ]
                                                 [
                                                     Heading.p []
                                                         [
@@ -420,19 +548,22 @@ let view (model : Model) (dispatch : Msg -> unit) =
                                                         ]
                                                 ]
 
-                                              
+
+
+
                                               //die vollständigen Karten der Gegner sind natürlich nicht einsehbar
-                                              if model.KartenDerRunde <> [] then //die Boxen sollen bitte eine fixe Größe haben
+                                              if model.KartenDerRunde <> [] then
                                                     Box.box'
-                                                        [
+                                                        [ 
                                                             if model.RundenGewinner |> List.contains model.KartenDerRunde.[i-1].Spieler then
-                                                                Common.Props [Style [ BackgroundColor "#2Fb660"]]
+                                                                Common.Props [Style [ BackgroundColor "#2Fb660"; Width "350px"]] //grün = spieler unter gewinnern
                                                             elif model.AktiveSpieler |> List.contains model.Spieler.[i-1] |> not then
-                                                                Common.Props [Style [ BackgroundColor "#BDBDBD"]]
+                                                                Common.Props [Style [ BackgroundColor "#BDBDBD"; Width "350px"]] //grau = spieler draußen
                                                             else
-                                                                Common.Props [Style [ BackgroundColor "#FFb660"]]
+                                                                Common.Props [Style [ BackgroundColor "#FFb660"; Width "350px"]] //orange = spieler im Spiel
                                                         ]
                                                         [
+                                                            //img [Src "images\Unbenannt.jpg"]
                                                             if model.AktiveSpieler |> List.contains model.Spieler.[i-1] |> not then
                                                                 Columns.columns []
                                                                     [
@@ -456,6 +587,8 @@ let view (model : Model) (dispatch : Msg -> unit) =
                                                                     ]
 
 
+                                                                //Werte der Karten
+
                                                                 for j in 0..3 do
                                                                     Columns.columns []
                                                                         [
@@ -473,9 +606,9 @@ let view (model : Model) (dispatch : Msg -> unit) =
                                                                                     
                                                                                             if model.Vergleichswerte.Length >=1 then
                                                                                                 if model.Vergleichswerte.[0] = (vergleichsWerte.[j] eigenschaften.[j]) && model.RundenGewinner |> List.contains model.KartenDerRunde.[i-1].Spieler then //Button = aktueller Vergleichswert & Spieler ein Rundengewinner
-                                                                                                    Button.Props [Style [BackgroundColor "#00ff00"]]
+                                                                                                    Button.Props [Style [BackgroundColor "#00ff00"]] //hellgrün = wert hat gewonnen
                                                                                                 elif model.Vergleichswerte(**.Tail**) |> List.contains (vergleichsWerte.[j] eigenschaften.[j]) then // schon verglichene Werte
-                                                                                                    Button.Props [Style [ BackgroundColor "#00c8f0"]]
+                                                                                                    Button.Props [Style [ BackgroundColor "#EDB372"]] //orange / beige = schon verglichener Wert
 
 
                                                                                             let schonVerglichen =
