@@ -446,4 +446,17 @@ let indizesAktiverSpieler spielerListe aktiveSpieler =
         )
     |> List.map (fun (i,x) -> i)
 
- 
+
+
+let schonVerglichen (vergleichswerte:Vergleichswert list) (aktuellerVergleichswert: Vergleichswert)=
+    
+
+    vergleichswerte
+    |> List.exists (fun x ->
+        match x, aktuellerVergleichswert with //(vergleichsWerte.[j] eigenschaften.[j])
+        | Krankheit _ , Krankheit _ -> true
+        | Alter _ , Alter _ -> true
+        | Sonstiges _ , Sonstiges _ -> true
+        | Schamgefühl _ , Schamgefühl _ -> true
+        | _ -> false
+        )
