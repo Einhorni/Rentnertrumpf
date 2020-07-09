@@ -3,6 +3,7 @@ module Logik
 open System
 open Fulma
 open Fable.React
+open Fable.React.Props
 
 type Spieler =
 | Spieler1
@@ -44,7 +45,7 @@ let fakeKarte = {
     Krankheit = ("yeaahhh", 0)
     Alter = 0
     Sonstiges = ("Depp", 0)
-    Schamgefühl = -10 
+    Schamgefühl = 0 
     Spieler = Keiner} 
 
 
@@ -391,9 +392,6 @@ let wählenDerBestenKarte (vergleichsWerteGegner:Vergleichswert list) =
 let wessenKarte werIstDranIndex indizes =
     //weristdran ist zwischengewinner --> immer noch dran
 
-    //let werIstDranIndex = 2
-    //let indizes = [1;3]
-
     if indizes |> List.contains werIstDranIndex then
         werIstDranIndex
     //wer ist dran ist kein gewinner --> nächster gegner ist dran
@@ -449,8 +447,7 @@ let indizesAktiverSpieler spielerListe aktiveSpieler =
 
 
 let schonVerglichen (vergleichswerte:Vergleichswert list) (aktuellerVergleichswert: Vergleichswert)=
-    
-
+   
     vergleichswerte
     |> List.exists (fun x ->
         match x, aktuellerVergleichswert with //(vergleichsWerte.[j] eigenschaften.[j])
@@ -460,3 +457,131 @@ let schonVerglichen (vergleichswerte:Vergleichswert list) (aktuellerVergleichswe
         | Schamgefühl _ , Schamgefühl _ -> true
         | _ -> false
         )
+
+
+
+let containerSpieler rundenGewinner aktiveSpieler spieler istDran content =
+    div
+        [ Style [CSSProp.Width "100%"; CSSProp.MarginBottom "50px" ]  ]
+        [
+            Columns.columns []
+                [
+                    Column.column []
+                        [
+                            Box.box'
+                                [
+                                    Common.Props [Style
+                                        [
+                                            if istDran then
+                                                Border "solid"
+                                                BorderColor "black"
+                                            Width "400px"
+                                            Margin "Auto"
+                                            if rundenGewinner |> List.contains spieler then
+                                                BackgroundColor "#2Fb660" //grün = spieler unter gewinnern
+                                            elif rundenGewinner.Length > 1 && rundenGewinner |> List.contains spieler |> not && aktiveSpieler |> List.contains spieler then
+                                                BackgroundColor "#E1CDB5" //blass = spieler nicht unter den Gewinnern
+                                            elif aktiveSpieler |> List.contains spieler |> not then
+                                                BackgroundColor "#BDBDBD" //grau = spieler draußen
+                                            else BackgroundColor "#FFb660" //orange = spieler im Spiel
+                                        ]]
+                                ]
+                                content
+                        ]
+                ]
+        ]
+
+
+
+
+let containerGegner i rundenGewinner aktiveSpieler spieler istDran  content =                        
+    Column.column []
+        [
+            Tile.ancestor []
+                [ Tile.parent []
+                    [ Tile.child [ ]
+                        [
+                            Box.box'
+                                [ Common.Props [Style [Width "400px"]] ]
+                                [ Heading.p [] [str (sprintf "Gegner %i" (i))] ]
+                                                    
+                            Box.box'
+                                [
+                                    Common.Props
+                                        [Style
+                                            [
+                                                                                
+                                                if istDran then
+                                                    Border "solid"
+                                                    BorderColor "black"
+                                                Width "400px"
+                                                Height "300px"
+                                                if rundenGewinner |> List.contains spieler then
+                                                    BackgroundColor "#2Fb660" //grün = spieler unter gewinnern
+                                                                        
+                                                elif rundenGewinner.Length > 1 && rundenGewinner |> List.contains spieler |> not && aktiveSpieler |> List.contains spieler then
+                                                    BackgroundColor "#E1CDB5" //blass = spieler nicht unter den Gewinnern
+                                                elif aktiveSpieler |> List.contains spieler |> not then //model.Spieler.[i]
+                                                    BackgroundColor "#BDBDBD" //grau = spieler draußen
+                                                else
+                                                    BackgroundColor "#FFb660" //orange = spieler im Spiel
+                                            ]
+                                        ]
+                                ]
+                                content
+                                                            
+                        ]
+                    ]
+                ]
+        ]
+
+
+
+let nameStatusAnzahlKarten (aktiveSpieler: Spieler list) spieler nameDerKarte (längeDeck:int) =
+
+    div
+        [ Style [CSSProp.Width "100%"]  ]
+        [
+            Columns.columns []
+                [
+                    Column.column [ Column.Props [Style [ CSSProp.VerticalAlign "top"]]]
+                        [
+                            //img [Src "images\Unbenannt.jpg"]
+                            if aktiveSpieler |> List.contains spieler |> not then
+                                        
+                                    p [  Style [ CSSProp.FontSize "25px"] ][str (sprintf "Ausgeschieden")]
+                            elif aktiveSpieler.Length = 1 && aktiveSpieler.Head = spieler then
+                                        
+                                    p [  Style [ CSSProp.FontSize "25px"] ][str (sprintf "Gewinner")]
+                            else
+                                        
+                                            p [  Style [ CSSProp.FontSize "25px"] ][str (sprintf "%s" nameDerKarte)]
+                        ]
+                    div [Style [CSSProp.AlignContent AlignContentOptions.FlexStart] ]
+                        [
+
+
+                            Box.box'
+                                [ Common.Props [Style [MarginRight "10px"; MarginTop "10px"; Width "45px"; BorderRadius "180px"; TextAlign TextAlignOptions.Center; Padding "10px"]]]
+                                [
+
+                                    p []
+                                        [
+                                            str (sprintf "%i" längeDeck)
+                                        ]
+                                            
+                                ]
+                        ]
+
+                ]
+        ]
+
+
+
+let aktuellerVergleichswert vergleichsWertModel wertKarte =
+    match vergleichsWertModel, wertKarte with
+    | Krankheit _, Krankheit _ -> true
+    | Alter _, Alter _ -> true
+    | Sonstiges _, Sonstiges _ -> true
+    | Schamgefühl _, Schamgefühl _ -> true
+    | _ -> false
