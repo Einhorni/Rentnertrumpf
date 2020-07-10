@@ -114,20 +114,29 @@ let sonstiges = [
 let schamgefühl =
     [for i in 1..32 do r.Next(1,6)]
 
+    //ich muss verhindern, dass es 2 gleich Karten gibt
+let rec kartenSet() =
+    
+    let set = 
+        [for i in 1..32 do //Namen sollen nur einmal auftauchen 
+                {
+            Name = namen.[i-1]
+            Krankheit = krankheiten.[r.Next(14)]
+            Alter = alter.[r.Next(32)]
+            Sonstiges = sonstiges.[r.Next(12)]
+            Schamgefühl = schamgefühl.[r.Next(32)]
+            Spieler = Spieler1
+            }]
+    let längeSetOhneDoppelte =
+        set
+        |> List.distinct
+        |> List.length
 
-let kartenSet = 
-    [for i in 1..32 do //Namen sollen nur einmal auftauchen 
-            {
-        Name = namen.[i-1]
-        Krankheit = krankheiten.[r.Next(14)]
-        Alter = alter.[r.Next(32)]
-        Sonstiges = sonstiges.[r.Next(12)]
-        Schamgefühl = schamgefühl.[r.Next(32)]
-        Spieler = Spieler1
-        }]
-
-
-
+    
+    if längeSetOhneDoppelte <> 32 then
+        kartenSet()
+    else set
+    
 
 
 //########################################################################################
@@ -144,7 +153,7 @@ let kartenDecks (initialSet:Karte list) anzahlSpieler : Decks =
 
     let kurzesSet = 
         let zufällige = [for i in 1..2 do r.Next(1,33)]
-        kartenSet
+        kartenSet()
         |> List.indexed
         |> List.filter (fun (i,x) -> (i <> zufällige.[0]-1) && (i <> zufällige.[1]-1)) 
         |> List.map (fun (i,x) -> x)
@@ -185,6 +194,9 @@ let kartenDecks (initialSet:Karte list) anzahlSpieler : Decks =
 
 
 let kartenDerRunde (decks:Decks) anzahlAllerSpieler (indizesAktiverSpieler: int list) : KartenDerRunde =
+    //Browser.Dom.console.log(indizesAktiverSpieler|> List.toArray)
+    //Browser.Dom.console.log(decks|> List.toArray)
+    //Browser.Dom.console.log(anzahlAllerSpieler)
 
     let indizesAllerSpieler =
                 match anzahlAllerSpieler with
@@ -275,7 +287,7 @@ let vergleicheKarten (karten:KartenDerRunde) (vergleichswert:Vergleichswert) (ru
 let changeDecks (aktuelleDecks: Decks) (sieger:Spieler) (aktuelleKarten:Karte list) =
 
     //siegerDeck
-
+    
     let siegerDeckIndex =
         [Spieler1; Gegner1; Gegner2; Gegner3]
         |> List.findIndex (fun x -> x = sieger)
@@ -291,12 +303,13 @@ let changeDecks (aktuelleDecks: Decks) (sieger:Spieler) (aktuelleKarten:Karte li
             x <> gewinnerKarte
             )
 
-
     let neuesSiegerDeck =
         aktuelleKarten
         |> List.filter (fun x -> x.Spieler <> Keiner)    //alle Fakekarten rausnehmen (werden gebraucht, um unabhängig Anzahl Spieler die gleiche Länge der KArtenliste zu haben) und auch die Karte des Siegers
         |> List.append siegerDeck //alle Karten der Runde dem Siegerdeck hinzufügen
         |> List.map (fun x -> {x with Spieler = sieger})
+
+    
 
     //verliererDecks
 
@@ -343,12 +356,9 @@ let changeDecks (aktuelleDecks: Decks) (sieger:Spieler) (aktuelleKarten:Karte li
 
 
 
-
-
 //########################################################################################
 //############################### Hilfsfunktionen ########################################
 //########################################################################################
-
 
 
 
@@ -433,7 +443,18 @@ let vergleichslisteGegner möglicheVergleichswerteGegner bereitsGespielteVerglei
 
 
 
-let indizesAktiverSpieler spielerListe aktiveSpieler =
+let indizeesZwischenGewinner spieler zwischenGewinner = 
+    spieler
+    |> List.indexed
+    |> List.filter (fun (i,x) ->
+        zwischenGewinner
+        |> List.exists (fun y -> y=x)
+        )
+    |> List.map (fun (i,x) -> i)
+
+
+
+let indizesAktiverSpieler spielerListe aktiveSpieler = //theoretisch gleich fktnk wie oben, eine löschen, am besten, die mit dem string behalten... börchen nochmal sagen, dass die obere eigentlich auch funktioniert
     spielerListe
     |> List.indexed
     |> List.filter (fun (i,spieler) ->
@@ -457,6 +478,18 @@ let schonVerglichen (vergleichswerte:Vergleichswert list) (aktuellerVergleichswe
         | Schamgefühl _ , Schamgefühl _ -> true
         | _ -> false
         )
+
+
+
+let helperVergleiche indSpieler (kartenDerRunde: Karte list) =
+    let schamPunkte = kartenDerRunde.[indSpieler ].Schamgefühl
+    let (sonstiges, sonstigesPunkte) = kartenDerRunde.[indSpieler ].Sonstiges
+    let alterPunkte = kartenDerRunde.[indSpieler ].Alter
+    let (krankheit, krankheitPunkte) = kartenDerRunde.[indSpieler ].Krankheit
+    let eigenschaften = [krankheitPunkte; alterPunkte; sonstigesPunkte; schamPunkte]
+    let vergleichsWerte = [Krankheit; Alter; Sonstiges; Schamgefühl]
+
+    sonstiges, krankheit, eigenschaften, vergleichsWerte
 
 
 
@@ -585,3 +618,10 @@ let aktuellerVergleichswert vergleichsWertModel wertKarte =
     | Sonstiges _, Sonstiges _ -> true
     | Schamgefühl _, Schamgefühl _ -> true
     | _ -> false
+
+
+
+let index indexOption =
+    match indexOption with
+    | Some idx -> idx
+    | None -> 4 //kommt nicht vor
